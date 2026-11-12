@@ -45,8 +45,10 @@ components of `Jᶜ`.
   is the curve.
 * `TauCeti.IsJordanCurve.frontier_filledHull` — the curve is also the frontier of its filled hull,
   hence of its outside.
-* `TauCeti.IsJordanCurve.filledHull_frontier_eq` — conversely, a compact set with nonempty
-  interior whose frontier is a Jordan curve is the filled hull of its frontier.
+* `TauCeti.IsJordanCurve.filledHull_frontier_sdiff_eq_interior` and
+  `TauCeti.IsJordanCurve.filledHull_frontier_eq_closure` — a bounded set with nonempty interior
+  whose frontier is a Jordan curve has that curve's inside as its interior and filled hull as
+  its closure. For compact sets, `TauCeti.IsJordanCurve.filledHull_frontier_eq` recovers the set.
 * `TauCeti.IsJordanCurve.interior_filledHull`, `TauCeti.IsJordanCurve.closure_filledHull_sdiff` and
   `TauCeti.IsJordanCurve.closure_compl_filledHull` — the inside is the interior of the filled hull,
   whose closure it is, and the closure of the outside is the complement of the inside.
@@ -137,24 +139,39 @@ theorem IsJordanCurve.frontier_filledHull {C : Set ℂ} (hC : IsJordanCurve C) :
   rw [← frontier_compl, compl_filledHull_eq_connectedComponentIn hrank hC.isCompact.isBounded hx]
   exact hC.frontier_connectedComponentIn fun h => hx (subset_filledHull h)
 
+/-- The interior of a bounded set `D ⊆ ℂ` with nonempty interior and Jordan frontier is the
+inside of that frontier. -/
+theorem IsJordanCurve.filledHull_frontier_sdiff_eq_interior {D : Set ℂ}
+    (hJ : IsJordanCurve (frontier D)) (hD : IsBounded D) (hint : (interior D).Nonempty) :
+    filledHull (frontier D) \ frontier D = interior D := by
+  -- Being bounded, `D` lies in the hull. Conversely, the inside of the curve is connected, misses
+  -- the frontier of `D` and meets `D` at an interior point, so it lies in `D`.
+  have hsub : D ⊆ filledHull (frontier D) :=
+    subset_filledHull_of_frontier_subset hD subset_rfl
+  rw [← self_sdiff_frontier]
+  refine Subset.antisymm (fun x hx ↦ ⟨?_, hx.2⟩) (sdiff_subset_sdiff_left hsub)
+  by_contra hxD
+  obtain ⟨p, hp⟩ := hint
+  obtain ⟨z, hz, hzf⟩ := hJ.isConnected_filledHull_sdiff.isPreconnected.inter_frontier_nonempty
+    ⟨p, ⟨hsub (interior_subset hp), fun h ↦ h.2 hp⟩, interior_subset hp⟩ ⟨x, hx, hxD⟩
+  exact hz.2 hzf
+
+/-- The closure of a bounded set `D ⊆ ℂ` with nonempty interior and Jordan frontier is the
+filled hull of that frontier. -/
+@[simp]
+theorem IsJordanCurve.filledHull_frontier_eq_closure {D : Set ℂ}
+    (hJ : IsJordanCurve (frontier D)) (hD : IsBounded D) (hint : (interior D).Nonempty) :
+    filledHull (frontier D) = closure D := by
+  rw [closure_eq_interior_union_frontier, ← hJ.filledHull_frontier_sdiff_eq_interior hD hint,
+    sdiff_union_of_subset subset_filledHull]
+
 /-- **A compact set bounded by a Jordan curve is the filled hull of the curve.** If `D ⊆ ℂ` is
 compact with nonempty interior and its frontier is a Jordan curve, then `D` is the filled hull of
 its frontier. -/
 @[simp]
 theorem IsJordanCurve.filledHull_frontier_eq {D : Set ℂ} (hJ : IsJordanCurve (frontier D))
     (hD : IsCompact D) (hint : (interior D).Nonempty) : filledHull (frontier D) = D := by
-  -- Being bounded, `D` lies in the hull. Conversely, the inside of the curve is connected, misses
-  -- the frontier of `D` and meets `D` at an interior point, so it lies in `D`.
-  have hsub : D ⊆ filledHull (frontier D) :=
-    subset_filledHull_of_frontier_subset hD.isBounded subset_rfl
-  refine Subset.antisymm (fun x hx ↦ ?_) hsub
-  by_cases hxF : x ∈ frontier D
-  · exact hD.isClosed.frontier_subset hxF
-  by_contra hxD
-  obtain ⟨p, hp⟩ := hint
-  obtain ⟨z, hz, hzf⟩ := hJ.isConnected_filledHull_sdiff.isPreconnected.inter_frontier_nonempty
-    ⟨p, ⟨hsub (interior_subset hp), fun h ↦ h.2 hp⟩, interior_subset hp⟩ ⟨x, ⟨hx, hxF⟩, hxD⟩
-  exact hz.2 hzf
+  simpa only [hD.isClosed.closure_eq] using hJ.filledHull_frontier_eq_closure hD.isBounded hint
 
 /-- The interior of the filled hull of a Jordan curve `C ⊆ ℂ` is its inside `filledHull C \ C`. -/
 @[simp]
